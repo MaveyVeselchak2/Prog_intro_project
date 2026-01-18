@@ -34,62 +34,51 @@ def predict(df):
 
     # создаем массив для хранения ошибок для разных коэффициентов [i, j, error]
     # Коэффициенты: i для hours (1-10), j для attendance (1-10) => 100 вариантов
-    inaccuracies = [[0, 0, float('inf')] for _ in range(100)]
 
+    inaccuracies = [0,0, 100.0]
+    lust_inaccuracies = [0,0, 0.0]
 
-    idx = 0  # Индекс в массиве inaccuracies
     total_students = len(df)
 
     # Перебираем все комбинации коэффициентов
-    for i in range(1, 11):  # Коэффициент для hours_studied (1-10)
-        for j in range(1, 11):  # Коэффициент для attendance (1-10)
+    for i in range(1, 100):  # Коэффициент для attendance (1-10)
+        lust_inaccuracies = inaccuracies.copy()
+        # Сохраняем коэффициенты
+        inaccuracies[0] = i
+        inaccuracies[1] = 100 - i
+        total_error = 0.0
 
-            # Сохраняем коэффициенты
-            inaccuracies[idx][0] = i
-            inaccuracies[idx][1] = j
+        # для каждого студента вычисляем ошибку прогноза
+        for student_idx in range(total_students):
 
-            total_error = 0.0
-            count = 0
+            hours = df['hours_studied'].iloc[student_idx]
+            attendance = df['attendance'].iloc[student_idx]
+            actual_score = df['exam_score'].iloc[student_idx]
 
-            #для каждого студента вычисляем ошибку прогноза
-            for student_idx in range(total_students):
+            # прогнозируем оценку
+            pred = ((hours * impact_hours_studied * i / 100) +
+                    (attendance * impact_attendance * (100 - i)/100))
 
-                hours = df['hours_studied'].iloc[student_idx]
-                attendance = df['attendance'].iloc[student_idx]
-                actual_score = df['exam_score'].iloc[student_idx]
+            # вычисляем ошибку по модулю
+            error = abs(pred - actual_score)
+            total_error += error
 
-                #прогнозируем оценку
-                pred = (hours * impact_hours_studied * i +
-                        attendance * impact_attendance * j) / (i + j)
+        # Сохраняем среднюю ошибку
+        inaccuracies[2] = total_error / total_students
 
-                #вычисляем ошибку по модулю
-                error = abs(pred - actual_score)
-                total_error += error
-                count += 1
+        #тк функция среднеей ошибки очевидно имеет один экстренум, то как только предыдущее значение меньше, оно оптимально
+        if lust_inaccuracies[2] < inaccuracies[2]:
+            break
 
-            # Сохраняем среднюю ошибку
-            if count > 0:
-                inaccuracies[idx][2] = total_error / count
 
-            idx += 1
-
-    #находим лучшую комбинацию коэффициентов проходя по массиву
-
-    min_error = float('inf')
-    min_index = -1
-
-    for i in range(len(inaccuracies)):
-        if inaccuracies[i][2] < min_error:
-            min_error = inaccuracies[i][2]
-            min_index = i
 
     # пишем результаты
-    if min_index >= 0:
-        best_i, best_j, best_error = inaccuracies[min_index]
+    best_hs, best_att, best_error = lust_inaccuracies
 
-        print(f"  Коэффициент для hours_studied: {best_i}")
-        print(f"  Коэффициент для attendance: {best_j}")
-        print(f"  Средняя ошибка: {best_error:.2f} баллов")
+    print(f"  Коэффициент для hours_studied: {best_hs/100}")
+    print(f"  Коэффициент для attendance: {best_att/100}")
+    print(f"  Средняя ошибка: {best_error:.2f} баллов")
 
-        print(f"\n4. ФОРМУЛА ПРОГНОЗА:")
-        print( f"   Оценка = (часы × {impact_hours_studied:.2f} × {best_i} + посещаемость × {impact_attendance:.3f} × {best_j}) / ({best_i} + {best_j})")
+    print(f"\n4. ФОРМУЛА ПРОГНОЗА:")
+    print(
+        f"   Оценка = (часы × {impact_hours_studied:.2f} × {best_hs/100} + посещаемость × {impact_attendance:.3f} × {best_att/100}))")

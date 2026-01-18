@@ -1,4 +1,3 @@
-# Импортируем функцию load_and_prepare_data из файла parse.py
 import pandas as pd
 
 # Создаем функцию с параметром filename
